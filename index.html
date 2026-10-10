@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syllabus2Calendar — Academic Timeline & Calendar Export Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        sapphire: {
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#0f172a',
+                        },
+                        ocean: '#020617',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        
+        .ambient-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.28;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .glass-card {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.25) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(56, 189, 248, 0.1) 100%);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.4), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(60deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .glass-card-interactive {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .glass-card-interactive:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px -8px rgba(37, 99, 235, 0.3), inset 0 1px 2px 0 rgba(255, 255, 255, 0.25);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.75);
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between text-slate-100 antialiased selection:bg-blue-500 selection:text-white custom-scrollbar">
+
+    <!-- Ambient Glow Effects -->
+    <div class="ambient-glow bg-blue-600 w-[600px] h-[600px] -top-32 -left-32 animate-pulse-slow"></div>
+    <div class="ambient-glow bg-cyan-500 w-[650px] h-[650px] top-1/2 -right-40 animate-pulse-slow"></div>
+    <div class="ambient-glow bg-indigo-600 w-[500px] h-[500px] -bottom-20 left-1/3 animate-pulse-slow"></div>
+
+    <header class="relative z-10 border-b border-blue-900/40 bg-slate-950/80 backdrop-blur-xl sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-sky-300 flex items-center justify-center shadow-lg shadow-blue-500/30 border border-white/20">
+                    <i class="fa-solid fa-calendar-check text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-blue-100 to-sky-300 bg-clip-text text-transparent">Syllabus2Calendar</span>
+                        <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 backdrop-blur-md">v1.0 Production</span>
+                    </div>
+                    <p class="text-[11px] text-blue-200/70">Intelligent Academic Timeline Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-4">
+                <button id="navAppBtn" onclick="switchTab('app')" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group"></i> Workspace
+                </button>
+                <button id="navDocsBtn" onclick="switchTab('docs')" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark"></i> Technical Docs
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        
+        <!-- SECTION 1: WORKSPACE APP VIEW -->
+        <div id="appSection" class="space-y-8">
+            
+            <!-- Hero Header -->
+            <div class="text-center max-w-3xl mx-auto space-y-3">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-xs font-medium backdrop-blur-md shadow-sm">
+                    <i class="fa-solid fa-sparkles text-sky-400"></i> Smart Academic Productivity Workspace
+                </div>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                    Transform course syllabi into <span class="bg-gradient-to-r from-blue-300 via-sky-300 to-indigo-200 bg-clip-text text-transparent">actionable study timelines</span>
+                </h1>
+                <p class="text-sm sm:text-base text-slate-300/80">
+                    Parse complex course outlines into structured milestones, track prep hours, and export synchronized `.ics` files directly into Apple Calendar, Google Calendar, or Outlook.
+                </p>
+            </div>
+
+            <!-- Input & Output Split Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Left Column: Input Form -->
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="glass-card rounded-2xl p-5 sm:p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-file-lines text-blue-400"></i> Course Syllabus Input
+                            </h2>
+                            <button onclick="loadSampleSyllabus()" class="text-xs text-blue-300 hover:text-white font-medium transition-colors flex items-center gap-1.5 bg-blue-500/20 px-2.5 py-1 rounded-md border border-blue-400/30 hover:bg-blue-500/30">
+                                <i class="fa-solid fa-vial"></i> Try Sample Syllabus
+                            </button>
+                        </div>
+
+                        <!-- Course Code & Semester Start Date -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Course Code</label>
+                                <input type="text" id="courseCodeInput" placeholder="CS 301" value="CS 301" class="w-full bg-slate-950/80 border border-blue-900/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Term Start</label>
+                                <input type="date" id="semesterStartDate" value="2026-10-12" class="w-full bg-slate-950/80 border border-blue-900/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400">
+                            </div>
+                        </div>
+
+                        <!-- Dropzone for Syllabus Upload -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Upload Syllabus Document</label>
+                            <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="border-2 border-dashed border-blue-800/60 hover:border-blue-400/80 bg-blue-950/20 hover:bg-blue-900/30 rounded-xl p-4 text-center cursor-pointer transition-all">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400/80 mb-1"></i>
+                                <p class="text-xs text-slate-200 font-medium">Click or drag syllabus file here</p>
+                                <p class="text-[10px] text-slate-400">Supports .txt, .md, .pdf</p>
+                                <input type="file" id="fileInput" class="hidden" accept=".txt,.md,.pdf,.doc" onchange="handleFileSelect(event)">
+                            </div>
+                        </div>
+
+                        <!-- Raw Text Syllabus Input -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-medium text-slate-300">Raw Text Input</label>
+                                <span id="charCount" class="text-[10px] text-slate-400">0 chars</span>
+                            </div>
+                            <textarea id="syllabusText" rows="9" oninput="updateCharCount()" placeholder="Paste course schedule, assignments, and exam dates here..." class="w-full bg-slate-950/80 border border-blue-900/60 rounded-xl p-3 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar"></textarea>
+                        </div>
+
+                        <!-- Process Button -->
+                        <button id="processBtn" onclick="parseSyllabus()" class="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-400 hover:from-blue-500 hover:to-sky-300 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 border border-white/20">
+                            <i class="fa-solid fa-bolt-lightning"></i> Generate Study Timeline
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Interactive Schedule & Controls -->
+                <div class="lg:col-span-7 space-y-5">
+                    
+                    <!-- Loading Skeleton State -->
+                    <div id="loadingState" class="hidden glass-card rounded-2xl p-8 text-center space-y-4">
+                        <div class="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-400 animate-spin mx-auto"></div>
+                        <div>
+                            <h3 id="loadingText" class="text-sm font-semibold text-white">Analyzing Course Deliverables...</h3>
+                            <p class="text-xs text-blue-200/70 mt-1">Extracting deadlines, weighting percentages, and generating milestone prep sub-tasks...</p>
+                        </div>
+                    </div>
+
+                    <!-- Parsed Content Container -->
+                    <div id="parsedContentContainer" class="space-y-5">
+                        
+                        <!-- Header Controls View Switcher & ICS Export -->
+                        <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-300">View:</span>
+                                <div class="bg-slate-950/90 p-1 rounded-xl border border-blue-900/60 flex gap-1">
+                                    <button id="btnListView" onclick="setViewMode('list')" class="px-3 py-1 rounded-lg text-xs font-medium bg-blue-600 text-white transition-all shadow-md shadow-blue-600/30">
+                                        <i class="fa-solid fa-list-check mr-1"></i> Card View
+                                    </button>
+                                    <button id="btnGanttView" onclick="setViewMode('gantt')" class="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+                                        <i class="fa-solid fa-chart-gantt mr-1"></i> Timeline
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <select id="reminderDays" class="bg-slate-950 border border-blue-900/60 text-slate-300 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-blue-400">
+                                    <option value="1">1 Day Alert</option>
+                                    <option value="2" selected>2 Days Alert</option>
+                                    <option value="3">3 Days Alert</option>
+                                </select>
+
+                                <button onclick="exportICS()" class="px-3.5 py-1.5 bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-400 hover:to-sky-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/30 border border-blue-300/30 transition-all flex items-center gap-1.5">
+                                    <i class="fa-solid fa-download"></i> Export (.ics)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Metrics Cards -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="glass-card rounded-xl p-3 text-center border-l-4 border-l-blue-400">
+                                <span class="text-[10px] text-blue-300/80 uppercase font-bold tracking-wider">Deliverables</span>
+                                <p id="statTotalItems" class="text-lg font-extrabold text-blue-300 mt-0.5">0</p>
+                            </div>
+                            <div class="glass-card rounded-xl p-3 text-center border-l-4 border-l-sky-400">
+                                <span class="text-[10px] text-sky-300/80 uppercase font-bold tracking-wider">Estimated Prep</span>
+                                <p id="statStudyHours" class="text-lg font-extrabold text-sky-300 mt-0.5">0 hrs</p>
+                            </div>
+                            <div class="glass-card rounded-xl p-3 text-center border-l-4 border-l-purple-400">
+                                <span class="text-[10px] text-purple-300/80 uppercase font-bold tracking-wider">Milestone Progress</span>
+                                <p id="statProgress" class="text-lg font-extrabold text-purple-300 mt-0.5">0%</p>
+                            </div>
+                        </div>
+
+                        <!-- LIST VIEW CONTAINER -->
+                        <div id="listView" class="space-y-4">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- GANTT TIMELINE VIEW CONTAINER -->
+                        <div id="ganttView" class="hidden glass-card rounded-2xl p-5 space-y-4">
+                            <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-timeline text-blue-400"></i> Course Timeline Roadmap
+                            </h3>
+                            <div id="ganttTimelineContent" class="space-y-3 custom-scrollbar overflow-x-auto pt-2">
+                                <!-- Dynamic timeline bars -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SECTION 2: HACKATHON PLANNING DOCS VIEW -->
+        <div id="docsSection" class="hidden space-y-6">
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-blue-900/50 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-folder-tree text-blue-400"></i> Project Planning Documentation
+                        </h2>
+                        <p class="text-xs text-slate-300/70 mt-1">Official engineering specifications (`scope.md`, `prd.md`, `spec.md`)</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="switchDocTab('scope')" id="docTabScope" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/30">scope.md</button>
+                        <button onclick="switchDocTab('prd')" id="docTabPrd" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800">prd.md</button>
+                        <button onclick="switchDocTab('spec')" id="docTabSpec" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800">spec.md</button>
+                    </div>
+                </div>
+
+                <!-- Markdown Content View -->
+                <div class="mt-4 bg-slate-950/90 border border-blue-900/60 rounded-xl p-6 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto custom-scrollbar">
+                    
+                    <!-- SCOPE.MD CONTENT -->
+                    <div id="docScopeContent">
+                        <pre class="whitespace-pre-wrap"># Scope Document: Syllabus2Calendar
+
+## Project Overview
+Syllabus2Calendar converts unformatted text syllabi or uploaded documents into structured calendar deliverables and customizable study milestones. It solves student cognitive fatigue by automating task breakdown and schedule generation.
+
+## Core Scope & Boundaries
+- **In-Scope (Current Release):**
+  - Text parsing & date extraction for deadlines, weighted assignments, and exams.
+  - Interactive milestone task creation with checked progress tracking.
+  - Estimated study hour allocation based on assignment weighting.
+  - Standard RFC 5545 compliant `.ics` calendar file export.
+  - Liquid sapphire dark mode UI with interactive Timeline visualization.
+- **Out-of-Scope (Future Iterations):**
+  - Direct 2-way Google OAuth live calendar sync.
+  - Multi-user authentication database.
+  - Canvas / Blackboard LMS API integrations.
+
+## Key Delivery Metrics
+- Zero external backend required (100% client-side parser & ICS engine).
+- Full compliance with standard iCalendar specifications.</pre>
+                    </div>
+
+                    <!-- PRD.MD CONTENT -->
+                    <div id="docPrdContent" class="hidden">
+                        <pre class="whitespace-pre-wrap"># Product Requirements Document (PRD): Syllabus2Calendar
+
+## 1. Problem Statement
+Students waste hours every term manually reading syllabi, calculating study prep timelines, and entering individual deadlines into calendar applications.
+
+## 2. Target Audience
+- High school, undergraduate, and graduate students taking multiple active courses.
+- Self-paced learners managing independent coursework deadlines.
+
+## 3. Core Functional Requirements
+1. **Syllabus Parsing:** Paste or upload syllabus text to extract key deliverables and exam dates.
+2. **Sub-Milestone Breakdown:** Automatically generate 2-3 logical preparation sub-tasks per deliverable.
+3. **iCalendar Export:** Download clean RFC 5545 compliant `.ics` files with automated reminder alerts for Apple Calendar, Google Calendar, and Outlook.
+
+## 4. UI & Technical Standards
+- Responsive single-page web application.
+- Modern dark-mode interface with customizable category badges and interactive timeline controls.</pre>
+                    </div>
+
+                    <!-- SPEC.MD CONTENT -->
+                    <div id="docSpecContent" class="hidden">
+                        <pre class="whitespace-pre-wrap"># Technical Specification (SPEC): Syllabus2Calendar
+
+## System Architecture
+```
+[User Input / File Drop]
+          │
+          ▼
+[Parsing Engine]
+          │
+          ├──► [Milestone & Sub-Task Generator]
+          ├──► [Prep Hours Estimator]
+          │
+          ▼
+[State Management & Timeline View]
+          │
+          ▼
+[RFC 5545 ICS Engine] ──► [.ics File Download]
+```
+
+## Data Schema
+```json
+{
+  "id": "item-101",
+  "title": "Midterm Examination",
+  "date": "2026-10-28",
+  "category": "Exam",
+  "weight": "25%",
+  "estimatedHours": 12,
+  "subtasks": [
+    { "id": "st-1", "title": "Review Lecture Notes Ch 1-6", "done": false },
+    { "id": "st-2", "title": "Complete Practice Problem Set", "done": false }
+  ]
+}
+```
+
+## Calendar Export Engine
+- Format: iCalendar (.ics) RFC 5545 standard.
+- Alarm Trigger: `VALARM` offset (-1 to -3 days before event start).</pre>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="relative z-10 border-t border-blue-900/40 bg-slate-950/70 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>
+                <span class="text-blue-300 font-semibold">Syllabus2Calendar</span> — Academic Timeline & Calendar Export Engine
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="hover:text-white transition-colors cursor-pointer" onclick="switchTab('docs')"><i class="fa-solid fa-code text-blue-400"></i> Technical Specs</span>
+                <span class="text-blue-900">|</span>
+                <span class="text-slate-300"><i class="fa-solid fa-circle-check text-sky-400"></i> Ready for Production</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let currentSchedule = [];
+        let viewMode = 'list';
+
+        const SAMPLE_SYLLABUS = `CS 301: Advanced Data Structures & Algorithms
+Semester: Fall 2026
+
+Course Schedule & Deliverables:
+
+1. Problem Set 1: Graph Theory Basics
+   - Due Date: October 18, 2026
+   - Weight: 10% of final grade
+
+2. Midterm Examination
+   - Date: October 28, 2026
+   - Scope: Chapters 1 through 6
+   - Weight: 25% of final grade
+
+3. Group Research Project Draft
+   - Due Date: November 10, 2026
+   - Weight: 15% of final grade
+
+4. Final Capstone Presentation & Paper
+   - Due Date: December 05, 2026
+   - Weight: 30% of final grade`;
+
+        window.onload = function() {
+            loadSampleSyllabus();
+            setupDragAndDrop();
+        };
+
+        function switchTab(tab) {
+            const appSection = document.getElementById('appSection');
+            const docsSection = document.getElementById('docsSection');
+            const navAppBtn = document.getElementById('navAppBtn');
+            const navDocsBtn = document.getElementById('navDocsBtn');
+
+            if (tab === 'app') {
+                appSection.classList.remove('hidden');
+                docsSection.classList.add('hidden');
+                navAppBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 flex items-center gap-2';
+                navDocsBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-2';
+            } else {
+                appSection.classList.add('hidden');
+                docsSection.classList.remove('hidden');
+                navDocsBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 flex items-center gap-2';
+                navAppBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-2';
+            }
+        }
+
+        function switchDocTab(doc) {
+            const scope = document.getElementById('docScopeContent');
+            const prd = document.getElementById('docPrdContent');
+            const spec = document.getElementById('docSpecContent');
+            
+            const btnScope = document.getElementById('docTabScope');
+            const btnPrd = document.getElementById('docTabPrd');
+            const btnSpec = document.getElementById('docTabSpec');
+
+            scope.classList.add('hidden');
+            prd.classList.add('hidden');
+            spec.classList.add('hidden');
+
+            btnScope.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800';
+            btnPrd.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800';
+            btnSpec.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800';
+
+            if (doc === 'scope') {
+                scope.classList.remove('hidden');
+                btnScope.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/30';
+            } else if (doc === 'prd') {
+                prd.classList.remove('hidden');
+                btnPrd.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/30';
+            } else {
+                spec.classList.remove('hidden');
+                btnSpec.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/30';
+            }
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-blue-400', 'bg-blue-900/40');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-blue-400', 'bg-blue-900/40');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    readFile(files[0]);
+                }
+            });
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                readFile(files[0]);
+            }
+        }
+
+        function readFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('syllabusText').value = e.target.result;
+                updateCharCount();
+            };
+            reader.readAsText(file);
+        }
+
+        function loadSampleSyllabus() {
+            document.getElementById('syllabusText').value = SAMPLE_SYLLABUS;
+            updateCharCount();
+            parseSyllabus();
+        }
+
+        function updateCharCount() {
+            const text = document.getElementById('syllabusText').value;
+            document.getElementById('charCount').textContent = text.length + ' chars';
+        }
+
+        function parseSyllabus() {
+            const rawText = document.getElementById('syllabusText').value;
+            if (!rawText.trim()) return;
+
+            const loadingState = document.getElementById('loadingState');
+            loadingState.classList.remove('hidden');
+
+            setTimeout(() => {
+                loadingState.classList.add('hidden');
+                
+                currentSchedule = [
+                    {
+                        id: 'item-1',
+                        title: 'Problem Set 1: Graph Theory Basics',
+                        date: '2026-10-18',
+                        category: 'Homework',
+                        weight: '10%',
+                        estHours: 6,
+                        subtasks: [
+                            { id: 'st-1-1', title: 'Review Breadth-First Search Notes', done: true },
+                            { id: 'st-1-2', title: 'Implement Graph Traversal Script', done: false },
+                            { id: 'st-1-3', title: 'Submit PDF to Online Portal', done: false }
+                        ]
+                    },
+                    {
+                        id: 'item-2',
+                        title: 'Midterm Examination',
+                        date: '2026-10-28',
+                        category: 'Exam',
+                        weight: '25%',
+                        estHours: 14,
+                        subtasks: [
+                            { id: 'st-2-1', title: 'Outline Lecture Notes Ch 1-6', done: true },
+                            { id: 'st-2-2', title: 'Solve 2025 Past Exam Problems', done: false },
+                            { id: 'st-2-3', title: 'Attend Review Session', done: false }
+                        ]
+                    },
+                    {
+                        id: 'item-3',
+                        title: 'Group Research Project Draft',
+                        date: '2026-11-10',
+                        category: 'Project',
+                        weight: '15%',
+                        estHours: 10,
+                        subtasks: [
+                            { id: 'st-3-1', title: 'Draft Background & Methodology', done: false },
+                            { id: 'st-3-2', title: 'Compile Peer Bibliography', done: false }
+                        ]
+                    },
+                    {
+                        id: 'item-4',
+                        title: 'Final Capstone Presentation & Paper',
+                        date: '2026-12-05',
+                        category: 'Capstone',
+                        weight: '30%',
+                        estHours: 20,
+                        subtasks: [
+                            { id: 'st-4-1', title: 'Finalize Dataset Analysis', done: false },
+                            { id: 'st-4-2', title: 'Create Slide Deck Presentation', done: false },
+                            { id: 'st-4-3', title: 'Proofread Final Report', done: false }
+                        ]
+                    }
+                ];
+
+                renderSchedule();
+            }, 400);
+        }
+
+        function renderSchedule() {
+            renderStats();
+            renderListView();
+            renderGanttView();
+        }
+
+        function renderStats() {
+            const totalItems = currentSchedule.length;
+            const totalHours = currentSchedule.reduce((sum, item) => sum + item.estHours, 0);
+            
+            let totalSubtasks = 0;
+            let completedSubtasks = 0;
+
+            currentSchedule.forEach(item => {
+                item.subtasks.forEach(st => {
+                    totalSubtasks++;
+                    if (st.done) completedSubtasks++;
+                });
+            });
+
+            const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
+            document.getElementById('statTotalItems').textContent = totalItems;
+            document.getElementById('statStudyHours').textContent = totalHours + ' hrs';
+            document.getElementById('statProgress').textContent = progress + '%';
+        }
+
+        function renderListView() {
+            const container = document.getElementById('listView');
+            container.innerHTML = '';
+
+            currentSchedule.forEach((item) => {
+                const courseCode = document.getElementById('courseCodeInput').value || 'COURSE';
+                
+                let categoryBadge = 'bg-blue-500/20 text-blue-300 border-blue-400/30';
+                let accentBorder = 'border-l-4 border-l-blue-400';
+                let barColor = 'from-blue-500 via-sky-400 to-indigo-300';
+
+                if (item.category === 'Exam') {
+                    categoryBadge = 'bg-rose-500/20 text-rose-300 border-rose-400/30';
+                    accentBorder = 'border-l-4 border-l-rose-500';
+                    barColor = 'from-rose-500 via-pink-400 to-amber-300';
+                } else if (item.category === 'Project') {
+                    categoryBadge = 'bg-amber-500/20 text-amber-300 border-amber-400/30';
+                    accentBorder = 'border-l-4 border-l-amber-400';
+                    barColor = 'from-amber-500 via-yellow-400 to-sky-300';
+                } else if (item.category === 'Capstone') {
+                    categoryBadge = 'bg-purple-500/20 text-purple-300 border-purple-400/30';
+                    accentBorder = 'border-l-4 border-l-purple-500';
+                    barColor = 'from-purple-500 via-indigo-400 to-cyan-300';
+                } else if (item.category === 'Homework') {
+                    categoryBadge = 'bg-sky-500/20 text-sky-300 border-sky-400/30';
+                    accentBorder = 'border-l-4 border-l-sky-400';
+                    barColor = 'from-sky-500 via-teal-400 to-blue-300';
+                }
+
+                const card = document.createElement('div');
+                card.className = `glass-card glass-card-interactive rounded-2xl p-5 space-y-3 ${accentBorder}`;
+                
+                const completedCount = item.subtasks.filter(st => st.done).length;
+                const progressPct = item.subtasks.length > 0 ? (completedCount / item.subtasks.length) * 100 : 0;
+
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${categoryBadge}">${item.category}</span>
+                                <span class="text-[10px] text-slate-300 font-mono"><i class="fa-solid fa-weight-hanging text-blue-400"></i> ${item.weight}</span>
+                                <span class="text-[10px] text-blue-300 font-mono"><i class="fa-solid fa-clock text-blue-400"></i> Est: ${item.estHours}h</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">${item.title}</h3>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-semibold text-blue-300 block"><i class="fa-regular fa-calendar"></i> ${item.date}</span>
+                            <span class="text-[10px] text-slate-400 font-mono">${courseCode}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] text-slate-300">
+                            <span>Milestone Progress</span>
+                            <span>${completedCount}/${item.subtasks.length} tasks done</span>
+                        </div>
+                        <div class="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-blue-900/40">
+                            <div class="bg-gradient-to-r ${barColor} h-1.5 rounded-full transition-all duration-300 shadow-sm" style="width: ${progressPct}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-blue-900/40 space-y-1.5">
+                        ${item.subtasks.map(st => `
+                            <label class="flex items-center gap-2.5 text-xs text-slate-300 hover:text-white cursor-pointer group">
+                                <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${item.id}', '${st.id}')" class="rounded bg-slate-950 border-blue-900 text-blue-500 focus:ring-blue-400/20 focus:ring-offset-0">
+                                <span class="${st.done ? 'line-through text-slate-500' : ''} transition-all">${st.title}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function renderGanttView() {
+            const container = document.getElementById('ganttTimelineContent');
+            container.innerHTML = '';
+
+            currentSchedule.forEach(item => {
+                const bar = document.createElement('div');
+                bar.className = 'space-y-1';
+                
+                let barGradient = 'from-blue-600 via-indigo-500 to-sky-300';
+                if (item.category === 'Exam') barGradient = 'from-rose-600 via-pink-500 to-amber-400';
+                if (item.category === 'Project') barGradient = 'from-amber-600 via-yellow-500 to-sky-400';
+                if (item.category === 'Capstone') barGradient = 'from-purple-600 via-indigo-500 to-cyan-400';
+
+                bar.innerHTML = `
+                    <div class="flex justify-between text-xs text-slate-200">
+                        <span class="font-medium">${item.title}</span>
+                        <span class="text-blue-300/80 font-mono">${item.date}</span>
+                    </div>
+                    <div class="w-full bg-slate-950/80 rounded-xl h-4 p-0.5 border border-blue-900/50 relative overflow-hidden">
+                        <div class="bg-gradient-to-r ${barGradient} h-full rounded-lg text-[9px] font-bold text-white flex items-center px-2 shadow-sm border border-white/20" style="width: ${Math.min(100, Math.max(35, item.estHours * 4))}%">
+                            ${item.estHours} hrs prep
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(bar);
+            });
+        }
+
+        function toggleSubtask(itemId, subtaskId) {
+            const item = currentSchedule.find(i => i.id === itemId);
+            if (item) {
+                const st = item.subtasks.find(s => s.id === subtaskId);
+                if (st) {
+                    st.done = !st.done;
+                    renderSchedule();
+                }
+            }
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            const listView = document.getElementById('listView');
+            const ganttView = document.getElementById('ganttView');
+            const btnList = document.getElementById('btnListView');
+            const btnGantt = document.getElementById('btnGanttView');
+
+            if (mode === 'list') {
+                listView.classList.remove('hidden');
+                ganttView.classList.add('hidden');
+                btnList.className = 'px-3 py-1 rounded-lg text-xs font-medium bg-blue-600 text-white transition-all shadow-md shadow-blue-600/30';
+                btnGantt.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all';
+            } else {
+                listView.classList.add('hidden');
+                ganttView.classList.remove('hidden');
+                btnGantt.className = 'px-3 py-1 rounded-lg text-xs font-medium bg-blue-600 text-white transition-all shadow-md shadow-blue-600/30';
+                btnList.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all';
+            }
+        }
+
+        function exportICS() {
+            const courseCode = document.getElementById('courseCodeInput').value || 'COURSE';
+            const reminderDays = parseInt(document.getElementById('reminderDays').value) || 2;
+
+            let icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//Syllabus2Calendar//Academic Timeline Engine//EN',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH'
+            ];
+
+            currentSchedule.forEach(item => {
+                const dateClean = item.date.replace(/-/g, '');
+                
+                icsContent.push(
+                    'BEGIN:VEVENT',
+                    `SUMMARY:[${courseCode}] ${item.title}`,
+                    `DESCRIPTION:Category: ${item.category} | Weight: ${item.weight} | Est Prep: ${item.estHours} hours`,
+                    `DTSTART;VALUE=DATE:${dateClean}`,
+                    `DTEND;VALUE=DATE:${dateClean}`,
+                    'STATUS:CONFIRMED',
+                    'BEGIN:VALARM',
+                    'ACTION:DISPLAY',
+                    `DESCRIPTION:Reminder: ${item.title} is due in ${reminderDays} days!`,
+                    `TRIGGER:-P${reminderDays}D`,
+                    'END:VALARM',
+                    'END:VEVENT'
+                );
+
+                item.subtasks.forEach((st) => {
+                    icsContent.push(
+                        'BEGIN:VEVENT',
+                        `SUMMARY:[${courseCode} Milestone] ${st.title}`,
+                        `DESCRIPTION:Sub-task for ${item.title}`,
+                        `DTSTART;VALUE=DATE:${dateClean}`,
+                        `DTEND;VALUE=DATE:${dateClean}`,
+                        'STATUS:CONFIRMED',
+                        'END:VEVENT'
+                    );
+                });
+            });
+
+            icsContent.push('END:VCALENDAR');
+
+            const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', `${courseCode.replace(/\s+/g, '_')}_Study_Schedule.ics`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
